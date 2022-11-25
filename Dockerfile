@@ -1,3 +1,7 @@
-FROM httpd:2.4
-#COPY ./public-html/ /usr/local/apache2/htdocs/
-COPY  bundle.tar.gz /dist/automationdemo/var/www/html && cd /dist/automationdemo/var/www/html && sudo tar -xvf bundle.tar.gz
+FROM node:14.17.0-alpine as build-step
+RUN mkdir -p /app
+WORKDIR /app
+COPY package.json /app
+RUN npm install
+COPY . /app
+RUN npm run build --prod
