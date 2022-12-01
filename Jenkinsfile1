@@ -1,0 +1,92 @@
+node(){
+    def buildNumber = BUILD_NUMBER
+    stage('Cloning Git') {
+        git credentialsId: '6f02d8ff-1b37-435c-bb04-6dffc4a4152c', url: 'https://github.com/learningwithmainsh/automationdemo.git'
+
+    }
+        
+    stage('Install dependencies') {
+        nodejs('nodejs') {
+            sh 'npm install'
+            echo "Modules installed"
+        }
+        
+    }
+    stage('Build') {
+        nodejs('nodejs') {
+            sh 'npm run build'
+            echo "Build completed"
+            
+    
+        }
+        
+    }
+
+    stage('Package Build') {
+        sh "tar -zcvf bundle.tar.gz dist/automationdemo/"
+    }
+
+    stage('Artifacts Creation') {
+        fingerprint 'bundle.tar.gz'
+        archiveArtifacts 'bundle.tar.gz'
+        echo "Artifacts created"
+    }
+
+    
+    
+    stage('Docker Image build'){
+    
+    sh "docker build -t manishgenius/automationdemo:${buildNumber} ."
+
+    //sh "docker rmi manishgenius/automationdemo:${buildNumber-1}"
+}
+
+  stage('Docker login and Push'){
+    withCredentials([string(credentialsId: 'Docker_hub_pwd', variable: 'DockerHubPwd')]) {
+    // some block
+sh "docker login  -u  manishgenius -p ${DockerHubPwd}"
+}
+    
+    
+    sh " docker push manishgenius/automationdemo:${buildNumber} "
+}  
+ stage('Deployment')
+  
+ {
+sshagent(['Docker_deployment_server']) 
+  
+   {
+       //sh "ssh -o StrictHostKeyChecking=no ubuntu@13.232.59.220 'echo $HOME'"
+       
+    sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.13.106 docker rm -f  automationdemo || true"
+    
+//sh "ssh -o StrictHostKeyChecking=no ubuntu@13.232.59.220 ls"
+ sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.13.106 docker run -d -p 8080:8080 --name automationdemo manishgenius/automationdemo:${buildNumber}  "
+}
+
+ }
+ 
+ //post{
+
+   // success{
+     //   emailext body: 'Build Over!', subject: 'Success', to: 'mnshkmrpnd@gmail.com,manishkumarpandey144@gmail.com'
+
+    //}
+
+     //failure{
+       // emailext body: 'Build Over!', subject: 'Success', to: 'mnshkmrpnd@gmail.com,manishkumarpandey144@gmail.com'
+        
+    //}
+ //}
+ stage('Email Alert')
+ {
+   
+ emailext body: '''Build Over..
+
+ Regards,
+ Manish,
+ 8765368754''', subject: 'Build Over...', to: 'mnshkmrpnd@gmail.com'
+ 
+ }
+}
+
